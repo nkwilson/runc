@@ -125,20 +125,13 @@ func getContainer(context *cli.Context) (libcontainer.Container, error) {
 }
 
 // fatal prints the error's details if it is a libcontainer specific error type
-// then exists the program with an exit status of 1.
+// then exits the program with an exit status of 1.
 func fatal(err error) {
 	if lerr, ok := err.(libcontainer.Error); ok {
 		lerr.Detail(os.Stderr)
 		os.Exit(1)
 	}
 	fmt.Fprintln(os.Stderr, err)
-	os.Exit(1)
-}
-
-// fatalf formats the errror string with the specified template then exits the
-// program with an exit status of 1.
-func fatalf(t string, v ...interface{}) {
-	fmt.Fprintf(os.Stderr, t, v...)
 	os.Exit(1)
 }
 
@@ -168,10 +161,7 @@ func newProcess(p specs.Process) *libcontainer.Process {
 		Args: p.Args,
 		Env:  p.Env,
 		// TODO: fix libcontainer's API to better support uid/gid in a typesafe way.
-		User:   fmt.Sprintf("%d:%d", p.User.Uid, p.User.Gid),
-		Cwd:    p.Cwd,
-		Stdin:  os.Stdin,
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
+		User: fmt.Sprintf("%d:%d", p.User.UID, p.User.GID),
+		Cwd:  p.Cwd,
 	}
 }

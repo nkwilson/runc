@@ -3,6 +3,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"os"
 
@@ -10,41 +11,34 @@ import (
 	"github.com/opencontainers/runc/libcontainer"
 )
 
-// newTty creates a new pty for use with the container.  If a tty is not to be
+// newTty creates a new tty for use with the container.  If a tty is not to be
 // created for the process, pipes are created so that the TTY of the parent
 // process are not inherited by the container.
 func newTty(create bool, p *libcontainer.Process, rootuid int) (*tty, error) {
 	if create {
 		return createTty(p, rootuid)
 	}
-	return createStdioPipes(p)
+	return createStdioPipes(p, rootuid)
 }
 
 // setup standard pipes so that the TTY of the calling runc process
 // is not inherited by the container.
-func createStdioPipes(p *libcontainer.Process) (*tty, error) {
-	t := &tty{}
-	r, w, err := os.Pipe()
+func createStdioPipes(p *libcontainer.Process, rootuid int) (*tty, error) {
+	i, err := p.InitializeIO(rootuid)
 	if err != nil {
 		return nil, err
 	}
-	go io.Copy(w, os.Stdin)
-	t.closers = append(t.closers, w)
-	p.Stdin = r
-	if r, w, err = os.Pipe(); err != nil {
-		return nil, err
+	t := &tty{
+		closers: []io.Closer{
+			i.Stdin,
+			i.Stdout,
+			i.Stderr,
+		},
 	}
-	go io.Copy(os.Stdout, r)
-	p.Stdout = w
-	t.closers = append(t.closers, r)
-	if r, w, err = os.Pipe(); err != nil {
-		return nil, err
-	}
-	go io.Copy(os.Stderr, r)
-	p.Stderr = w
-	t.closers = append(t.closers, r)
+	go io.Copy(i.Stdin, os.Stdin)
+	go io.Copy(os.Stdout, i.Stdout)
+	go io.Copy(os.Stderr, i.Stderr)
 	return t, nil
-
 }
 
 func createTty(p *libcontainer.Process, rootuid int) (*tty, error) {
@@ -56,7 +50,7 @@ func createTty(p *libcontainer.Process, rootuid int) (*tty, error) {
 	go io.Copy(os.Stdout, console)
 	state, err := term.SetRawTerminal(os.Stdin.Fd())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to set the terminal from the stdin: %v", err)
 	}
 	t := &tty{
 		console: console,
@@ -65,9 +59,6 @@ func createTty(p *libcontainer.Process, rootuid int) (*tty, error) {
 			console,
 		},
 	}
-	p.Stderr = nil
-	p.Stdout = nil
-	p.Stdin = nil
 	return t, nil
 }
 

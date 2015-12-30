@@ -41,10 +41,10 @@ func TestDevicesSetAllow(t *testing.T) {
 		"devices.deny": "a",
 	})
 
-	helper.CgroupData.c.AllowAllDevices = false
-	helper.CgroupData.c.AllowedDevices = allowedDevices
+	helper.CgroupData.config.Resources.AllowAllDevices = false
+	helper.CgroupData.config.Resources.AllowedDevices = allowedDevices
 	devices := &DevicesGroup{}
-	if err := devices.Set(helper.CgroupPath, helper.CgroupData.c); err != nil {
+	if err := devices.Set(helper.CgroupPath, helper.CgroupData.config); err != nil {
 		t.Fatal(err)
 	}
 
@@ -66,10 +66,10 @@ func TestDevicesSetDeny(t *testing.T) {
 		"devices.allow": "a",
 	})
 
-	helper.CgroupData.c.AllowAllDevices = true
-	helper.CgroupData.c.DeniedDevices = deniedDevices
+	helper.CgroupData.config.Resources.AllowAllDevices = true
+	helper.CgroupData.config.Resources.DeniedDevices = deniedDevices
 	devices := &DevicesGroup{}
-	if err := devices.Set(helper.CgroupPath, helper.CgroupData.c); err != nil {
+	if err := devices.Set(helper.CgroupPath, helper.CgroupData.config); err != nil {
 		t.Fatal(err)
 	}
 
